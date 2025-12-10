@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Activity, LayoutDashboard, Server, Bell, CreditCard, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -11,8 +12,10 @@ interface DashboardLayoutProps {
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
+    logout();
     toast({
       title: "Logged out",
       description: "You have been logged out successfully.",

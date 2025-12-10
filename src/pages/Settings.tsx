@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,23 +7,49 @@ import { Label } from "@/components/ui/label";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/services/api";
 
 const Settings = () => {
-  const [name, setName] = useState("John Doe");
-  const [email, setEmail] = useState("user@example.com");
+  const { user, logout, refreshUser } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleUpdateProfile = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been updated successfully.",
-    });
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+  const handleUpdateProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await api.updateProfile({ name, email });
+      await refreshUser();
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -31,21 +58,44 @@ const Settings = () => {
       });
       return;
     }
-    toast({
-      title: "Password Updated",
-      description: "Your password has been changed successfully.",
-    });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+
+    setSavingPassword(true);
+    try {
+      await api.updatePassword(currentPassword, newPassword);
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    toast({
-      title: "Account Deleted",
-      description: "Your account has been permanently deleted.",
-      variant: "destructive",
-    });
+  const handleDeleteAccount = async () => {
+    try {
+      await api.deleteAccount();
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been permanently deleted.",
+      });
+      logout();
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -56,7 +106,6 @@ const Settings = () => {
           <p className="text-muted-foreground">Manage your account settings</p>
         </div>
 
-        {/* Profile Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
@@ -80,13 +129,12 @@ const Settings = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <Button onClick={handleUpdateProfile}>
-              Update Profile
+            <Button onClick={handleUpdateProfile} disabled={savingProfile}>
+              {savingProfile ? "Saving..." : "Update Profile"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Password Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Change Password</CardTitle>
@@ -120,13 +168,12 @@ const Settings = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
-            <Button onClick={handleUpdatePassword}>
-              Update Password
+            <Button onClick={handleUpdatePassword} disabled={savingPassword}>
+              {savingPassword ? "Saving..." : "Update Password"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Danger Zone */}
         <Card className="border-destructive">
           <CardHeader>
             <CardTitle className="text-destructive">Danger Zone</CardTitle>

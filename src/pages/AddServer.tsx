@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
+import api from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AddServer = () => {
   const [name, setName] = useState("");
@@ -18,21 +20,37 @@ const AddServer = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await api.createServer({
+        name,
+        domain,
+        interval: parseInt(interval),
+        emailNotif,
+        whatsappNotif,
+      });
       toast({
         title: "Server added!",
         description: `${name} is now being monitored.`,
       });
       navigate("/servers");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal menambahkan server",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
+
+  const isPro = user?.plan === 'pro';
 
   return (
     <DashboardLayout>
@@ -78,11 +96,12 @@ const AddServer = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 Minute</SelectItem>
-                    <SelectItem value="2">2 Minutes</SelectItem>
+                    <SelectItem value="1" disabled={!isPro}>1 Minute {!isPro && "(Pro only)"}</SelectItem>
+                    <SelectItem value="2" disabled={!isPro}>2 Minutes {!isPro && "(Pro only)"}</SelectItem>
                     <SelectItem value="5">5 Minutes</SelectItem>
                   </SelectContent>
                 </Select>
+                {!isPro && <p className="text-xs text-muted-foreground">Upgrade ke Pro untuk interval lebih cepat</p>}
               </div>
 
               <div className="space-y-3">
@@ -105,12 +124,13 @@ const AddServer = () => {
                     id="whatsapp"
                     checked={whatsappNotif}
                     onCheckedChange={(checked) => setWhatsappNotif(checked as boolean)}
+                    disabled={!isPro}
                   />
                   <label
                     htmlFor="whatsapp"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    WhatsApp Notifications (Pro only)
+                    WhatsApp Notifications {!isPro && "(Pro only)"}
                   </label>
                 </div>
               </div>
