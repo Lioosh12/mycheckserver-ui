@@ -18,48 +18,47 @@ pipeline {
 
         stage('Check Node & NPM') {
             steps {
-                sh 'node -v'
-                sh 'npm -v'
+                bat 'node -v'
+                bat 'npm -v'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                bat 'npm install'
             }
         }
 
         stage('Lint & Test') {
             steps {
-                // Lint tetap jalan walau error
-                sh 'npm run lint || true'
-                sh 'npm run test -- --watchAll=false'
+                bat 'npm run lint || exit 0' // tetap lanjut walau lint error
+                bat 'npm run test -- --watchAll=false'
             }
         }
 
         stage('Build React Web') {
             steps {
-                sh 'npm run build'
+                bat 'npm run build'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                archiveArtifacts artifacts: "${APP_DIST}/**", allowEmptyArchive: false
+                archiveArtifacts artifacts: "${APP_DIST}\\**", allowEmptyArchive: false
             }
         }
 
         stage('Deploy to Azure via Zip Deploy') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'AZURE_PUBLISH', usernameVariable: 'AZ_USER', passwordVariable: 'AZ_PASS')]) {
-                    sh """
-                    if [ -d "${APP_DIST}" ]; then
-                        zip -r deploy.zip ${APP_DIST}
-                        curl -X POST -u $AZ_USER:$AZ_PASS https://mycheckserver.scm.azurewebsites.net/api/zipdeploy --data-binary @deploy.zip
-                    else
-                        echo "❌ Folder ${APP_DIST} tidak ada, build gagal!"
+                    bat """
+                    if exist ${APP_DIST} (
+                        powershell Compress-Archive -Path ${APP_DIST}\\* -DestinationPath deploy.zip -Force
+                        curl -u %AZ_USER%:%AZ_PASS% -X POST https://mycheckserver.scm.azurewebsites.net/api/zipdeploy --data-binary @deploy.zip
+                    ) else (
+                        echo Folder ${APP_DIST} tidak ada, build gagal!
                         exit 1
-                    fi
+                    )
                     """
                 }
             }
@@ -71,7 +70,6 @@ pipeline {
             echo '✅ Build & Deploy sukses!'
         }
         failure {
-            echo '❌ Ada error, cek log Jenkins.'
         }
     }
 }
