@@ -2,8 +2,11 @@ pipeline {
     agent any
 
     environment {
-        NODE_HOME = tool name: 'NodeJS 20', type: 'NodeJS'
         APP_DIST = 'dist'
+    }
+
+    tools {
+        nodejs "NodeJS 20" // pastiin nama ini sama persis di Jenkins Global Tool Config
     }
 
     stages {
@@ -13,28 +16,36 @@ pipeline {
             }
         }
 
+        stage('Check Node & NPM') {
+            steps {
+                sh 'node -v'
+                sh 'npm -v'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
-                sh "${NODE_HOME}/bin/npm install"
+                sh 'npm install'
             }
         }
 
         stage('Lint & Test') {
             steps {
-                sh "${NODE_HOME}/bin/npm run lint || true"
-                sh "${NODE_HOME}/bin/npm run test -- --watchAll=false"
+                // Lint tetap jalan walau error
+                sh 'npm run lint || true'
+                sh 'npm run test -- --watchAll=false'
             }
         }
 
         stage('Build React Web') {
             steps {
-                sh "${NODE_HOME}/bin/npm run build"
+                sh 'npm run build'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: false
+                archiveArtifacts artifacts: "${APP_DIST}/**", allowEmptyArchive: false
             }
         }
 
@@ -42,8 +53,13 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'AZURE_PUBLISH', usernameVariable: 'AZ_USER', passwordVariable: 'AZ_PASS')]) {
                     sh """
-                    zip -r deploy.zip ${APP_DIST}
-                    curl -X POST -u $AZ_USER:$AZ_PASS https://mycheckserver.scm.azurewebsites.net/api/zipdeploy --data-binary @deploy.zip
+                    if [ -d "${APP_DIST}" ]; then
+                        zip -r deploy.zip ${APP_DIST}
+                        curl -X POST -u $AZ_USER:$AZ_PASS https://mycheckserver.scm.azurewebsites.net/api/zipdeploy --data-binary @deploy.zip
+                    else
+                        echo "❌ Folder ${APP_DIST} tidak ada, build gagal!"
+                        exit 1
+                    fi
                     """
                 }
             }
