@@ -6,11 +6,11 @@ pipeline {
     }
 
     tools {
-        nodejs "NodeJS 20" // pastiin nama ini sama persis di Jenkins Global Tool Config
+        nodejs "NodeJS 20" 
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
                 git branch: 'main', url: 'https://github.com/Lioosh12/mycheckserver-ui.git'
             }
@@ -31,7 +31,10 @@ pipeline {
 
         stage('Lint & Test') {
             steps {
-                bat 'npm run lint || exit 0' // tetap lanjut walau lint error
+                // Lint error nggak bikin gagal
+                bat 'npm run lint || exit 0' 
+
+                // Run all tests
                 bat 'npm run test -- --watchAll=false'
             }
         }
@@ -67,14 +70,10 @@ pipeline {
 
     post {
         success {
-            steps {
-                echo '✅ Build & Deploy sukses!'
-            }
+            echo '✅ Build & Deploy sukses!'
         }
         failure {
-            steps {
-                echo '❌ Ada error, cek log Jenkins.'
-            }
+            echo '❌ Ada error, cek log Jenkins.'
         }
     }
 }
