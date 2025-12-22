@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/username/forked-repo.git'
+                git branch: 'main', url: 'https://github.com/Lioosh12/mycheckserver-ui.git'
             }
         }
 
@@ -36,7 +36,7 @@ pipeline {
         stage('Lint & Test React Web') {
             steps {
                 sh 'npm run lint || true'
-                sh 'npm run test -- --watchAll=false || true'
+                sh 'npm run test -- --watchAll=false'
             }
         }
 
@@ -68,7 +68,7 @@ pipeline {
                 sh """
                     az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                     az account set --subscription $AZURE_SUBSCRIPTION_ID
-                    az webapp deploy --name $APP_NAME --resource-group <YOUR_RESOURCE_GROUP> --src-path dist --slot $APP_SLOT
+                    az webapp deploy --name $APP_NAME --resource-group "Kowan-CheckServer" --src-path dist --slot $APP_SLOT
                 """
             }
         }
