@@ -67,9 +67,14 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build & Deploy sukses!'
+            steps {
+                echo '✅ Build & Deploy sukses!'
+            }
         }
         failure {
+            steps {
+                echo '❌ Ada error, cek log Jenkins.'
+            }
         }
     }
 }
