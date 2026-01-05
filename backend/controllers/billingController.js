@@ -1,8 +1,8 @@
-import { poolPromise } from '../config/db.js';
+import { poolPromise } from '../config/azure-db.js';
 import { createTransaction, verifyNotification, checkTransactionStatus } from '../services/midtransService.js';
 import { v4 as uuidv4 } from 'uuid';
 
-const PRO_PLAN_PRICE = 99000;
+const PRO_PLAN_PRICE = 100;
 
 export const createPayment = async (req, res) => {
   try {
@@ -24,7 +24,7 @@ export const createPayment = async (req, res) => {
       .input('plan', 'pro')
       .input('status', 'pending')
       .query(`
-        INSERT INTO payments (user_id, order_id, amount, plan, status)
+        INSERT INTO payments (user_id, order_id, amount, [plan], status)
         VALUES (@userId, @orderId, @amount, @plan, @status)
       `);
 
@@ -75,7 +75,7 @@ export const handleNotification = async (req, res) => {
           .input('expiresAt', expiresAt.toISOString())
           .input('userId', payment.user_id)
           .query(`
-            UPDATE users SET plan = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
+            UPDATE users SET [plan] = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
             WHERE id = @userId
           `);
 
@@ -149,7 +149,7 @@ export const checkPaymentStatus = async (req, res) => {
             .input('expiresAt', expiresAt.toISOString())
             .input('userId', userId)
             .query(`
-              UPDATE users SET plan = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
+              UPDATE users SET [plan] = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
               WHERE id = @userId
             `);
         } else if (['deny', 'cancel', 'expire'].includes(midtransStatus.transaction_status)) {
@@ -189,7 +189,7 @@ export const getPaymentHistory = async (req, res) => {
     const result = await pool.request()
       .input('userId', userId)
       .query(`
-        SELECT TOP 20 order_id, amount, plan, status, payment_type, created_at
+        SELECT TOP 20 order_id, amount, [plan], status, payment_type, created_at
         FROM payments WHERE user_id = @userId ORDER BY created_at DESC
       `);
 
@@ -241,7 +241,7 @@ export const confirmPayment = async (req, res) => {
           .input('expiresAt', expiresAt.toISOString())
           .input('userId', userId)
           .query(`
-            UPDATE users SET plan = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
+            UPDATE users SET [plan] = 'pro', plan_expires_at = @expiresAt, updated_at = GETDATE()
             WHERE id = @userId
           `);
 

@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "concurrently \"npm run dev\" \"npm run backend\"",
+    "backend": "cd backend && npm start",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint src --max-warnings=0",
-    "test": "echo \"No test defined\" && exit 0",
-    "preview": "vite preview"
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "node backend/index.js",
+    "postinstall": "cd backend && npm install"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -45,9 +48,11 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
+    "mssql": "^12.2.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -70,6 +75,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

@@ -1,4 +1,4 @@
-import { poolPromise } from '../config/db.js';
+import { poolPromise } from '../config/azure-db.js';
 import { checkServer } from '../services/monitorService.js';
 
 export const getServers = async (req, res) => {

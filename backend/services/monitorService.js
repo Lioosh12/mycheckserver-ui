@@ -1,4 +1,4 @@
-import { poolPromise } from '../config/db.js';
+import { poolPromise } from '../config/azure-db.js';
 import { sendEmail } from './emailService.js';
 
 const DAILY_REPORT_HOURS = [8, 14, 20]; // Kirim report jam 8 pagi, 2 siang, 8 malam
@@ -143,7 +143,7 @@ export const runMonitoringCycle = async () => {
 
   const serversResult = await pool.request()
     .query(`
-      SELECT s.*, u.plan FROM servers s
+      SELECT s.*, u.[plan] FROM servers s
       JOIN users u ON s.user_id = u.id
       WHERE (s.last_check IS NULL OR 
         DATEADD(minute, s.interval, s.last_check) <= GETDATE())
@@ -181,7 +181,7 @@ export const sendDailyStatusReport = async () => {
       SELECT DISTINCT u.* FROM users u
       JOIN servers s ON s.user_id = u.id
       JOIN notification_settings ns ON ns.user_id = u.id
-      WHERE ns.daily_summary = 1 OR u.plan = 'pro'
+      WHERE ns.daily_summary = 1 OR u.[plan] = 'pro'
     `);
 
   const users = usersResult.recordset;

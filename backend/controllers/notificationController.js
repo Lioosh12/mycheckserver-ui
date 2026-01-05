@@ -1,4 +1,4 @@
-import { poolPromise } from '../config/db.js';
+import { poolPromise } from '../config/azure-db.js';
 
 export const getNotifications = async (req, res) => {
   try {

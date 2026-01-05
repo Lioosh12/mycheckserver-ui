@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { poolPromise } from '../config/db.js';
+import { poolPromise } from '../config/azure-db.js';
 import { sendVerificationEmail } from '../services/emailService.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -93,6 +93,7 @@ export const login = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user',
         plan: user.plan,
         planExpiresAt: user.plan_expires_at,
         emailVerified: !!user.email_verified,
@@ -122,6 +123,7 @@ export const getProfile = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user',
         plan: user.plan,
         planExpiresAt: user.plan_expires_at,
         emailVerified: !!user.email_verified,
@@ -170,7 +172,7 @@ export const updateProfile = async (req, res) => {
 
     const updatedUserResult = await pool.request()
       .input('userId', userId)
-      .query('SELECT id, name, email, plan, email_verified FROM users WHERE id = @userId');
+      .query('SELECT id, name, email, [plan], email_verified FROM users WHERE id = @userId');
 
     const updatedUser = updatedUserResult.recordset[0];
 
