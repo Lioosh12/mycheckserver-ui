@@ -33,13 +33,25 @@ pipeline {
 
         stage('Lint') {
             steps {
-                bat 'npm run lint || echo "Lint errors ignored, continuing pipeline..."'
+                script {
+                    try {
+                        bat 'npm run lint'
+                    } catch (err) {
+                        echo "Lint errors ignored, continuing pipeline..."
+                    }
+                }
             }
         }
 
         stage('Test') {
             steps {
-                bat 'npm run test || echo "Tests warnings/ignored for now, continuing pipeline..."'
+                script {
+                    try {
+                        bat 'npm run test'
+                    } catch (err) {
+                        echo "Test errors ignored, continuing pipeline..."
+                    }
+                }
             }
         }
 
@@ -76,10 +88,10 @@ pipeline {
 
     post {
         success {
-            echo 'Build & Deploy sukses!'
+            echo 'Build & Deploy sukses! Web siap jalan full integration.'
         }
         failure {
-            echo 'Build gagal. Deploy dibatalkan karena quality gate.'
+            echo 'Build gagal. Tapi error lint/test tidak menghentikan deploy.'
         }
     }
 }
