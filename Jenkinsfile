@@ -6,13 +6,15 @@ pipeline {
     }
 
     tools {
-        nodejs "NodeJS 20" 
+        nodejs "NodeJS 20"
     }
 
     stages {
+
         stage('Checkout SCM') {
             steps {
-                git branch: 'main', url: 'https://github.com/Lioosh12/mycheckserver-ui.git'
+                git branch: 'main',
+                    url: 'https://github.com/Lioosh12/mycheckserver-ui.git'
             }
         }
 
@@ -29,13 +31,15 @@ pipeline {
             }
         }
 
-        stage('Lint & Test') {
+        stage('Lint') {
             steps {
-                // Lint: tetap lanjut walau error
-                bat 'npm run lint || exit /b 0'
-                
-                // Test: aman, kalau script test nggak ada pipeline tetep lanjut
-                bat 'npm run test || exit /b 0'
+                bat 'npm run lint'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                bat 'npm run test'
             }
         }
 
@@ -47,22 +51,24 @@ pipeline {
 
         stage('Archive Artifact') {
             steps {
-                archiveArtifacts artifacts: "${APP_DIST}\\**", allowEmptyArchive: false
+                archiveArtifacts artifacts: 'dist/**', fingerprint: true
             }
         }
 
         stage('Deploy to Azure via Zip Deploy') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'AZURE_PUBLISH', usernameVariable: 'AZ_USER', passwordVariable: 'AZ_PASS')]) {
-                    bat """
-                    if exist ${APP_DIST} (
-                        powershell Compress-Archive -Path ${APP_DIST}\\* -DestinationPath deploy.zip -Force
-                        curl -u %AZ_USER%:%AZ_PASS% -X POST https://mycheckserver.scm.azurewebsites.net/api/zipdeploy --data-binary @deploy.zip
+                withCredentials([string(credentialsId: 'AZ_PASS', variable: 'AZ_PASS')]) {
+                    bat '''
+                    if exist dist (
+                        powershell Compress-Archive -Path dist\\* -DestinationPath deploy.zip -Force
+                        curl -u mycheckserver:%AZ_PASS% ^
+                          -X POST https://mycheckserver.scm.azurewebsites.net/api/zipdeploy ^
+                          --data-binary @deploy.zip
                     ) else (
-                        echo Folder ${APP_DIST} tidak ada, build gagal!
+                        echo Folder dist tidak ada
                         exit 1
                     )
-                    """
+                    '''
                 }
             }
         }
@@ -73,7 +79,7 @@ pipeline {
             echo '✅ Build & Deploy sukses!'
         }
         failure {
-            echo '❌ Ada error, cek log Jenkins.'
+            echo '❌ Build gagal. Deploy dibatalkan karena quality gate.'
         }
     }
 }
