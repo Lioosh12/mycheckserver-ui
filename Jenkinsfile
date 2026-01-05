@@ -61,8 +61,8 @@ pipeline {
                     bat '''
                     if exist dist (
                         powershell Compress-Archive -Path dist\\* -DestinationPath deploy.zip -Force
-                        curl -u mycheckserver:%AZ_PASS% ^
-                          -X POST https://mycheckserver.scm.azurewebsites.net/api/zipdeploy ^
+                        curl -u MyCheckSever:%AZ_PASS% ^
+                          -X POST https://MyCheckSever.scm.azurewebsites.net/api/zipdeploy ^
                           --data-binary @deploy.zip
                     ) else (
                         echo Folder dist tidak ada
