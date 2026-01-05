@@ -14,7 +14,7 @@ import { authenticate } from './middleware/auth.js';
 import { trackApiVisit } from './middleware/trackVisitor.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -29,7 +29,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all origins in development
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
@@ -72,6 +72,7 @@ app.post('/api/send-report', authenticate, async (req, res) => {
 // Serve static files from frontend build
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { error } from 'console';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(express.static(path.join(__dirname, '../dist')));
