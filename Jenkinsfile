@@ -1,212 +1,85 @@
 pipeline {
     agent any
-    
+
     environment {
-        AZURE_WEBAPP_NAME = 'mycheckserver-app'
-        NVM_DIR = '/var/lib/jenkins/.nvm'
+        APP_DIST = 'dist'
     }
-    
+
+    tools {
+        nodejs "NodeJS 20"
+    }
+
     stages {
-        stage('Checkout') {
+
+        stage('Checkout SCM') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/Lioosh12/mycheckserver-ui.git'
             }
         }
-        
-        stage('Setup Node.js') {
+
+        stage('Check Node & NPM') {
             steps {
-                bat '''
-                    # Install nvm and Node.js if not present
-                    if [ ! -d "$NVM_DIR" ]; then
-                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-                    fi
-                    export NVM_DIR="/var/lib/jenkins/.nvm"
-                    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-                    nvm install 20 || true
-                    nvm use 20
-                    node --version
-                    npm --version
-                '''
+                bat 'node -v'
+                bat 'npm -v'
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
-              bat 'npm ci'
-                dir('backend') {
-                    sh 'npm ci'
-                }
+                bat 'npm install'
             }
         }
-        
-        stage('Build Frontend') {
+
+        stage('Lint') {
             steps {
-                bat 'VITE_API_URL=/api npm run build'
+                bat 'npm run lint'
             }
         }
-        
-        stage('Prepare Deployment') {
+
+        stage('Test') {
             steps {
-                bat '''
-                    rm -rf deploy deploy.zip
-                    mkdir -p deploy/public
-                    cp -r dist/* deploy/public/
-                    cp -r backend/* deploy/
-                    rm -rf deploy/data.db* deploy/node_modules
-                    
-                    cat > deploy/server.js << 'EOF'
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import cron from 'node-cron';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 8080;
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-async function startServer() {
-  try {
-    // Wait for database to initialize
-    const { poolPromise } = await import('./config/db.js');
-    await poolPromise;
-    console.log('Database connected');
-
-    // Middlewares
-    const { trackApiVisit } = await import('./middleware/trackVisitor.js');
-    const { authenticate } = await import('./middleware/auth.js');
-
-    // Services
-    const { runMonitoringCycle, sendTestEmail } = await import('./services/monitorService.js');
-
-    // Routes
-    const authRoutes = (await import('./routes/auth.js')).default;
-    const serverRoutes = (await import('./routes/servers.js')).default;
-    const notificationRoutes = (await import('./routes/notifications.js')).default;
-    const billingRoutes = (await import('./routes/billing.js')).default;
-    const dashboardRoutes = (await import('./routes/dashboard.js')).default;
-    const adminRoutes = (await import('./routes/admin.js')).default;
-
-    // Apply middlewares
-    app.use('/api', trackApiVisit);
-
-    // Apply routes
-    app.use('/api/auth', authRoutes);
-    app.use('/api/servers', serverRoutes);
-    app.use('/api/notifications', notificationRoutes);
-    app.use('/api/billing', billingRoutes);
-    app.use('/api/dashboard', dashboardRoutes);
-    app.use('/api/admin', adminRoutes);
-
-    // Config endpoint
-    app.get('/api/config/midtrans', (req, res) => {
-      res.json({
-        clientKey: process.env.MIDTRANS_CLIENT_KEY,
-        isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true'
-      });
-    });
-
-    // Report endpoint
-    app.post('/api/send-report', authenticate, async (req, res) => {
-      try {
-        const result = await sendTestEmail(req.user.id);
-        res.json(result);
-      } catch (error) {
-        console.error('Send report error:', error);
-        res.status(500).json({ error: error.message });
-      }
-    });
-
-    // Cron Job for Monitoring
-    cron.schedule('* * * * *', async () => {
-      console.log('Running monitoring cycle...');
-      try {
-        await runMonitoringCycle();
-      } catch (error) {
-        console.error('Monitoring cycle error:', error);
-      }
-    });
-
-    // Frontend fallback
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    });
-
-    app.listen(PORT, () => console.log('Server running on port ' + PORT));
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-startServer();
-EOF
-
-                    cat > deploy/package.json << 'EOF'
-{
-  "name": "mycheckserver",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2",
-    "midtrans-client": "^1.3.1",
-    "mysql2": "^3.16.0",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.14",
-    "uuid": "^10.0.0"
-  },
-  "engines": { "node": ">=18.0.0" }
-}
-EOF
-
-                    cd deploy && zip -r ../deploy.zip .
-                '''
+                bat 'npm run test'
             }
         }
-        
-        stage('Deploy to Azure') {
+
+        stage('Build React Web') {
             steps {
-                withCredentials([string(credentialsId: 'azure-publish-profile', variable: 'PUBLISH_PROFILE')]) {
+                bat 'npm run build'
+            }
+        }
+
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'dist/**', fingerprint: true
+            }
+        }
+
+        stage('Deploy to Azure via Zip Deploy') {
+            steps {
+                withCredentials([string(credentialsId: 'AZ_PASS', variable: 'AZ_PASS')]) {
                     bat '''
-                        USER=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\\K[^"]+' | head -1)
-                        PASS=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\\K[^"]+' | head -1)
-                        
-                        curl -X POST \
-                            -u "$USER:$PASS" \
-                            --data-binary @deploy.zip \
-                            "https://${AZURE_WEBAPP_NAME}.scm.azurewebsites.net/api/zipdeploy"
+                    if exist dist (
+                        powershell Compress-Archive -Path dist\\* -DestinationPath deploy.zip -Force
+                        curl -u mycheckserver:%AZ_PASS% ^
+                          -X POST https://mycheckserver.scm.azurewebsites.net/api/zipdeploy ^
+                          --data-binary @deploy.zip
+                    ) else (
+                        echo Folder dist tidak ada
+                        exit 1
+                    )
                     '''
                 }
             }
         }
     }
-    
+
     post {
-        always {
-            cleanWs()
-        }
         success {
-            echo "Deployed to https://${AZURE_WEBAPP_NAME}.azurewebsites.net"
+            echo 'Build & Deploy sukses!'
+        }
+        failure {
+            echo 'Build gagal. Deploy dibatalkan karena quality gate.'
         }
     }
 }

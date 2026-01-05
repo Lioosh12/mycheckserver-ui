@@ -11,6 +11,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "echo \"No tests yet\" && exit 0",
     "start": "node backend/index.js",
     "postinstall": "cd backend && npm install"
   },
